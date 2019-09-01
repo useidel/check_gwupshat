@@ -1,10 +1,10 @@
 #!/bin/bash
-# Geekworm UPS Hat plugin for Nagios/Icinga
+# UPS Hat plugin for Nagios
 # Written by Udo Seidel
 #
 # Description:
 #
-# This plugin will check the status of a Geekworm UPS Hat connected to the RPi
+# This plugin will check the status of a UPS Hat connected to the RPi
 #
 # Location of the sudo and i2cget command (if not in path)
 SUDO="/usr/bin/sudo"
@@ -13,7 +13,7 @@ BC="/usr/bin/bc"
 MYTEST=""
 CUSTOMWARNCRIT=0 # no external defined warning and critical levels
 
-# sudo is needed if i2cget cannot be executed by the nagios 
+# sudo is needed if i2cget cannot be executed by the nagios/icinga 
 # user context w/o sudo granted priviledges
 
 
@@ -31,7 +31,7 @@ PROGNAME=`basename $0`
 
 print_usage() {
 	echo 
-	echo " This plugin will check the battery and voltage status of an locally attached Geekworm UPS Hat."
+	echo " This plugin will check the battery and voltage status of an locally attached UPS Hat."
 	echo 
 	echo 
         echo " Usage: $PROGNAME -<b|v|h> -w <warning level> -c <critical level>"
@@ -52,7 +52,7 @@ fi
 check_i2cget() {
 if [ ! -x "$I2CGET" ]
 then
-        echo "UNKNOWN: $I2CGET not found or is not executable by the nagios user"
+        echo "UNKNOWN: $I2CGET not found or is not executable by the nagios/icinga user"
         EXITSTATUS=$STATE_UNKNOWN
         exit $EXITSTATUS
 fi
@@ -119,25 +119,30 @@ fi
 
 
 bcdbyte2dec() {
-# convert the hex output to a proper dec number
+# convert the hex output to a proper dec number with switching high and low byte
 if [ ! -x "$BC" ]
 then
-        echo "UNKNOWN: $BC not found or is not executable by the nagios user"
+        echo "UNKNOWN: $BC not found or is not executable by the nagios/icinga user"
         EXITSTATUS=$STATE_UNKNOWN
         exit $EXITSTATUS
 fi
 
-DEC=`echo "ibase=16; $1" |bc -l`
+# swap high and low byte
+DEC=`echo "$1" |fold -w2|tac|tr -d "\n"`
+# convert from hex to dec
+DEC=`echo "ibase=16; $DEC" |bc -l`
 echo $DEC
 }
 
 calcbattery() {
-BAT=`echo "$1 / 256"|bc -l`
+# we limit the number of digits after decimal point to 2
+BAT=`echo "scale=2;$1 / 256"|bc -l`
 echo $BAT
 }
 
 calcvoltage() {
-VOL=`echo "$1 * 78.125 / 1000000"|bc -l`
+# we limit the number of digits after decimal point to 2
+VOL=`echo "scale=2; $1 * 78.125 / 1000000"|bc -l`
 echo $VOL
 }
 
